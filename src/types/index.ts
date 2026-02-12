@@ -2,22 +2,19 @@ export interface Session {
   id: string;
   attackerIp: string;
   country: string;
-  sessionStart: string;
   duration: number;
-  riskScore: number;
-  status: 'active' | 'terminated' | 'monitoring';
-  attackType: string;
+  status: "active" | "monitoring" | "terminated";
+  sessionStart: string;
 }
 
+
 export interface Alert {
-  id: string;
-  title: string;
-  description: string;
+  id: string;              
+  riskScore: number;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  timestamp: string;
-  source: string;
-  status: 'open' | 'investigating' | 'resolved';
+  latestEventTime: string;
 }
+
 
 export interface KPIData {
   totalSessions: number;

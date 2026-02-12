@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { UserPlus, Trash2, Edit2, X } from "lucide-react";
+import { useEffect } from "react";
+import { apiService } from "../services/api";
+
 const getInitials = (name) => {
   return name
     .split(" ")
@@ -14,24 +17,28 @@ const getInitials = (name) => {
 export default function Users() {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 5;
 
 
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "Security Analyst",
-      email: "analyst@threatguard.com",
-      role: "ANALYST",
-    },
-    {
-      id: 2,
-      name: "System Administrator",
-      email: "admin@threatguard.com",
-      role: "ADMIN",
-    },
-  ]);
+  const [users, setUsers] = useState([]);
+  
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const data = await apiService.getUsers();
+      setUsers(data);
+    } catch (error) {
+      console.error("Error loading users", error);
+    }
+  };
+
+
 
   const [formData, setFormData] = useState({
     id: null,
@@ -52,27 +59,61 @@ export default function Users() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
-    if (editMode) {
-      setUsers(
-        users.map((u) => (u.id === formData.id ? formData : u))
-      );
+ const handleSave = async () => {
+  try {
+    if (!formData.name || !formData.email) {
+      alert("Name and Email are required");
+      return;
+    }
+
+    setSaving(true);
+
+    if (editMode && formData.id !== null) {
+      await apiService.updateUser(formData.id, {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+      });
+
+      alert("User updated successfully");
     } else {
-      setUsers([
-        ...users,
-        {
-          ...formData,
-          id: users.length + 1,
-        },
-      ]);
+      const response = await apiService.registerUser({
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+      });
+
+      if (response.emailSent) {
+        alert(`User created successfully.\nReset email sent to ${formData.email}`);
+      } else {
+        alert(
+          "User created successfully, but email failed.\nYou may need to resend reset email."
+        );
+      }
     }
 
     setShowForm(false);
-  };
+    loadUsers();
+  } catch (error) {
+    console.error("Save failed", error);
+    alert("Operation failed");
+  } finally {
+    setSaving(false);
+  }
+};
 
-  const handleDelete = (id) => {
-    setUsers(users.filter((user) => user.id !== id));
-  };
+
+
+ const handleDelete = async (id) => {
+  try {
+    await apiService.deleteUser(id);
+    loadUsers();
+  } catch (error) {
+    console.error("Delete failed", error);
+  }
+};
+
+
 
   return (
     <div>
@@ -137,9 +178,16 @@ export default function Users() {
             </div>
 
             <div className="flex space-x-2">
-              <Button onClick={handleSave}>
-                {editMode ? "Update User" : "Save User"}
-              </Button>
+             <Button onClick={handleSave} disabled={saving}>
+              {saving
+                ? editMode
+                  ? "Updating..."
+                  : "Creating User..."
+                : editMode
+                ? "Update User"
+                : "Create User"}
+            </Button>
+
 
               <Button onClick={() => setShowForm(false)}>
                 Cancel

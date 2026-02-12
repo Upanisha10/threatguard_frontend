@@ -7,7 +7,9 @@ import Alerts from "./pages/Alerts";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
-
+import ResetPassword from "./pages/ResetPassword"
+import ForgotPassword from "./pages/ForgotPassword";
+import SessionConversation from './pages/SessionConversation';
 function ProtectedRoute({ children }) {
   const isAuthenticated = localStorage.getItem("auth_token");
 
@@ -78,8 +80,20 @@ function App() {
           }
         />
 
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        <Route
+          path="/alerts/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionConversation />
+            </ProtectedRoute>
+          }
+        />
+
+        
       </Routes>
     </Router>
   );

@@ -1,12 +1,18 @@
-
 import { Alert } from '../../types';
 import { AlertTriangle, Shield, Info } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+
 
 interface AlertItemProps {
   alert: Alert;
+  onViewDetails: () => void;
 }
 
-export function AlertItem({ alert }: AlertItemProps) {
+
+export function AlertItem({ alert, onViewDetails }: AlertItemProps) {
+
+   const navigate = useNavigate();
+
   const getSeverityStyles = (severity: Alert['severity']) => {
     const styles = {
       critical: {
@@ -33,15 +39,6 @@ export function AlertItem({ alert }: AlertItemProps) {
     return styles[severity];
   };
 
-  const getStatusColor = (status: Alert['status']) => {
-    const colors = {
-      open: 'bg-red-100 text-red-800',
-      investigating: 'bg-yellow-100 text-yellow-800',
-      resolved: 'bg-green-100 text-green-800',
-    };
-    return colors[status];
-  };
-
   const getIcon = (severity: Alert['severity']) => {
     if (severity === 'critical' || severity === 'high') {
       return AlertTriangle;
@@ -62,36 +59,46 @@ export function AlertItem({ alert }: AlertItemProps) {
   return (
     <div className={`border rounded-lg p-4 ${styles.bg}`}>
       <div className="flex items-start justify-between">
+
         <div className="flex items-start space-x-3 flex-1">
-          <div className={`p-2 rounded-full bg-white`}>
+          <div className="p-2 rounded-full bg-white">
             <Icon className={`w-5 h-5 ${styles.icon}`} />
           </div>
 
           <div className="flex-1">
-            <div className="flex items-start justify-between">
-              <h3 className={`text-base font-semibold ${styles.text}`}>
-                {alert.title}
-              </h3>
-              <span className={`ml-4 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(alert.status)}`}>
-                {alert.status}
+            <h3 className={`text-base font-semibold ${styles.text}`}>
+              Suspicious Session Detected
+            </h3>
+
+            <p className="mt-1 text-sm text-gray-700">
+              Session ID: <span className="font-mono">{alert.id}</span>
+            </p>
+
+            <div className="mt-2 text-sm">
+              Risk Score: 
+              <span className={`ml-2 font-semibold ${styles.text}`}>
+                {alert.riskScore}
               </span>
             </div>
 
-            <p className="mt-1 text-sm text-gray-700">
-              {alert.description}
-            </p>
-
-            <div className="mt-3 flex items-center space-x-4 text-xs text-gray-600">
-              <span className="font-medium">Source: {alert.source}</span>
-              <span>•</span>
-              <span>{formatDate(alert.timestamp)}</span>
-              <span>•</span>
-              <span className={`uppercase font-semibold ${styles.text}`}>
+            <div className="mt-3 text-xs text-gray-600">
+              {formatDate(alert.latestEventTime)}
+              <span className="ml-3 uppercase font-semibold">
                 {alert.severity}
               </span>
             </div>
           </div>
         </div>
+
+        <button
+          onClick={onViewDetails}
+          className="mt-3 text-sm text-blue-700 hover:underline"
+        >
+          View Conversation →
+        </button>
+
+
+
       </div>
     </div>
   );
