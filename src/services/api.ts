@@ -226,6 +226,23 @@ async getSessionConversation(sessionId: string) {
   return response.json();
 }
 
+async getAuditLogs() {
+  const token = localStorage.getItem("auth_token");
+
+  const response = await fetch(`${this.BASE_URL}/api/audit`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch audit logs");
+  }
+
+  return response.json();
+}
+
+
 
 
   private delay(ms: number): Promise<void> {

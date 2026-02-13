@@ -32,7 +32,7 @@ export function Sidebar() {
 
     { name: 'Users', to: '/users', icon: Users },
     { name: 'System Settings', to: '/admin-settings', icon: Sliders },
-    { name: 'Audit Logs', to: '/logs', icon: Database },
+    { name: 'Audit Logs', to: '/audit', icon: Database },
   ];
 
   const navigation = role === 'ADMIN' ? adminNavigation : analystNavigation;

@@ -10,6 +10,9 @@ import Users from "./pages/Users";
 import ResetPassword from "./pages/ResetPassword"
 import ForgotPassword from "./pages/ForgotPassword";
 import SessionConversation from './pages/SessionConversation';
+import AuditLogs from "./pages/AuditLogs";
+
+
 function ProtectedRoute({ children }) {
   const isAuthenticated = localStorage.getItem("auth_token");
 
@@ -92,6 +95,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/audit"
+          element={
+            <ProtectedRoute>
+              <AuditLogs />
+            </ProtectedRoute>
+          }
+        />
+
 
         
       </Routes>
