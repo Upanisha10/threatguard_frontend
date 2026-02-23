@@ -242,6 +242,114 @@ async getAuditLogs() {
   return response.json();
 }
 
+async getAttackTrend() {
+  const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/attack-trend`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch attack trend");
+    return res.json();
+  }
+
+  async getCountryDistribution() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/country-distribution`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch country distribution");
+    return res.json();
+  }
+
+  async getTopAsn() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/top-asn`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch ASN data");
+    return res.json();
+  }
+
+  async getRiskDistribution() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/risk-distribution`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch risk distribution");
+    return res.json();
+  }
+
+  async getActiveSessions() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/active-sessions`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch active sessions");
+    return res.json();
+  }
+
+  async getTotalAttacks() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/total-attacks`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch total attacks");
+    return res.json();
+  }
+
+  async getCriticalCount() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/critical-count`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch critical count");
+    return res.json();
+  }
+
+  async getAttackTypes() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/attack-types`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch attack types");
+    return res.json();
+  }
+
+  async getAvgRisk() {
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch(`${this.BASE_URL}/analytics/avg-risk`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch average risk");
+    return res.json();
+  }
+
 
 
 
