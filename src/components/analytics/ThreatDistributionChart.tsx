@@ -23,6 +23,15 @@ interface Props {
 }
 
 export function ThreatDistributionChart({ data }: Props) {
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-72 text-sm text-gray-500">
+        No attack distribution data available for the selected date range
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center">
 
@@ -35,10 +44,10 @@ export function ThreatDistributionChart({ data }: Props) {
               dataKey="count"
               nameKey="attackType"
               outerRadius={100}
-              paddingAngle={0}     // ❌ no gaps
+              paddingAngle={0}
               label={false}
               labelLine={false}
-              stroke="none"        // ❌ removes white borders
+              stroke="none"
             >
               {data.map((_, index) => (
                 <Cell
@@ -54,7 +63,7 @@ export function ThreatDistributionChart({ data }: Props) {
 
       {/* Legend */}
       <div className="w-1/3 space-y-3 pl-6">
-        {(data || []).map((entry, index) => (
+        {data.map((entry, index) => (
           <div
             key={entry.attackType}
             className="flex items-center justify-between"
@@ -71,10 +80,6 @@ export function ThreatDistributionChart({ data }: Props) {
                 {entry.attackType}
               </span>
             </div>
-
-            <span className="text-sm font-semibold text-gray-900">
-              {entry.count}
-            </span>
           </div>
         ))}
       </div>
