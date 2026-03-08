@@ -4,53 +4,159 @@ import { Card } from "../components/ui/Card";
 import { SessionsTable } from "../components/sessions/SessionsTable";
 import { apiService } from "../services/api";
 import { Session } from "../types";
+import { Client } from "@stomp/stompjs";
+
+function calculateDurationSeconds(startTime: string, endTime: string) {
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+
+  return Math.floor((end - start) / 1000);
+}
+
+function mapStatus(state: string) {
+  switch (state) {
+    case "ACTIVE":
+      return "active";
+    case "TIMEOUT":
+      return "monitoring";
+    case "CLOSED":
+      return "terminated";
+    default:
+      return "active";
+  }
+}
 
 export default function Sessions() {
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const sessionsPerPage = 8;
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const data = await apiService.getSessions();
-        setSessions(data);
-      } catch (error) {
-        console.error("Failed to fetch sessions:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Initial REST fetch
+  // Initial REST fetch
+useEffect(() => {
 
-    fetchSessions();
-  }, []);
+  const fetchSessions = async () => {
+    try {
 
+      const data = await apiService.getSessions();
+
+      console.log("Sessions loaded:", data);
+
+      setSessions(data);
+
+    } catch (error) {
+
+      console.error("Failed to fetch sessions:", error);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  };
+
+  fetchSessions();
+
+}, []);
+
+// WebSocket connection
+useEffect(() => {
+
+  const client = new Client({
+    brokerURL: "ws://localhost:8080/ws",
+    reconnectDelay: 5000,
+  });
+
+  client.onConnect = () => {
+
+    client.subscribe("/topic/sessions", (message) => {
+
+      const raw = JSON.parse(message.body);
+
+      const newSession: Session = {
+        id: String(raw.id ?? raw.sessionId),   // ← THIS FIXES EVERYTHING
+        attackerIp: raw.sourceIp ?? "-",
+        country: raw.sourceCountry ?? "Unknown",
+        duration: calculateDurationSeconds(
+          raw.startTime,
+          raw.endTime ?? new Date().toISOString()
+        ),
+        status: mapStatus(raw.state),
+        sessionStart: raw.startTime
+      };
+
+      setSessions((prev) => {
+
+        const existing = prev.find(
+          (s) => s.id === newSession.id
+        );
+
+        if (existing) {
+          return prev.map((s) =>
+            s.id === newSession.id ? newSession : s
+          );
+        }
+
+        return [newSession, ...prev];
+
+      });
+
+      // highlight
+      setHighlighted((prev) => {
+        const copy = new Set(prev);
+        copy.add(newSession.id);
+        return copy;
+      });
+
+      setTimeout(() => {
+        setHighlighted((prev) => {
+          const copy = new Set(prev);
+          copy.delete(newSession.id);
+          return copy;
+        });
+      }, 3000);
+
+    });
+
+  };
+
+  client.activate();
+
+  return () => {
+    client.deactivate();
+  };
+
+}, []);
   // Filtering
   const filteredSessions = useMemo(() => {
-    return sessions.filter((session) => {
-      const matchesSearch =
-        session.attackerIp
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        session.country
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
+  return sessions.filter((session) => {
 
-      const matchesStatus =
-        statusFilter === "ALL" || session.status === statusFilter;
+    const ip = session.attackerIp ?? "";
+    const country = session.country ?? "";
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [sessions, searchTerm, statusFilter]);
+    const matchesSearch =
+      ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      country.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "ALL" || session.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+
+  });
+}, [sessions, searchTerm, statusFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredSessions.length / sessionsPerPage);
   const startIndex = (currentPage - 1) * sessionsPerPage;
+
   const paginatedSessions = filteredSessions.slice(
     startIndex,
     startIndex + sessionsPerPage
@@ -65,7 +171,7 @@ export default function Sessions() {
   }
 
   // Stats
-  const activeCount = sessions.filter((s) => s.status === "active").length;
+  const activeCount = sessions.filter((s) => s?.status === "active").length;
   const closedCount = sessions.filter((s) => s.status === "monitoring").length;
   const timeoutCount = sessions.filter((s) => s.status === "terminated").length;
 
@@ -90,6 +196,7 @@ export default function Sessions() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-4">
+
         <Card className="p-4 border shadow-sm">
           <p className="text-sm text-gray-500">Active</p>
           <p className="text-xl font-semibold text-green-600">
@@ -110,15 +217,19 @@ export default function Sessions() {
             {timeoutCount}
           </p>
         </Card>
+
       </div>
 
       {/* Search + Filter */}
       <Card className="p-6 border shadow-sm">
+
         <div className="flex items-center justify-between mb-6">
 
           {/* Search */}
           <div className="flex-1 max-w-md relative">
+
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+
             <input
               type="text"
               placeholder="Search by IP or country..."
@@ -129,11 +240,14 @@ export default function Sessions() {
               }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
+
           </div>
 
           {/* Status Filter */}
           <div className="ml-4 flex items-center">
+
             <Filter className="w-4 h-4 text-gray-400 mr-2" />
+
             <select
               value={statusFilter}
               onChange={(e) => {
@@ -142,25 +256,35 @@ export default function Sessions() {
               }}
               className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
             >
+
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="CLOSED">Closed</option>
               <option value="TIMEOUT">Timeout</option>
+
             </select>
+
           </div>
+
         </div>
 
         {/* Table */}
-        <SessionsTable sessions={paginatedSessions} />
+        <SessionsTable
+          sessions={paginatedSessions}
+          // highlighted={highlighted}
+        />
 
         {/* Pagination */}
         {totalPages > 1 && (
+
           <div className="flex justify-between items-center mt-6 pt-4 border-t">
+
             <span className="text-sm text-gray-600">
               Page {currentPage} of {totalPages}
             </span>
 
             <div className="flex space-x-2">
+
               <button
                 disabled={currentPage === 1}
                 onClick={() =>
@@ -182,10 +306,15 @@ export default function Sessions() {
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
+
             </div>
+
           </div>
+
         )}
+
       </Card>
+
     </div>
   );
 }

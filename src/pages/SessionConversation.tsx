@@ -1,6 +1,8 @@
+(globalThis as any).global = globalThis;
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiService } from "../services/api";
+import { Client } from "@stomp/stompjs";
 
 export default function SessionConversation() {
   const { sessionId } = useParams();
@@ -11,6 +13,7 @@ export default function SessionConversation() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Initial conversation fetch
   useEffect(() => {
     const fetchConversation = async () => {
       try {
@@ -33,7 +36,52 @@ export default function SessionConversation() {
     fetchConversation();
   }, [sessionId]);
 
-  // Auto scroll
+  // WebSocket connection for live updates
+  useEffect(() => {
+
+  const client = new Client({
+    brokerURL: "ws://localhost:8080/ws",
+    reconnectDelay: 5000,
+  });
+
+  client.onConnect = () => {
+
+    client.subscribe(`/topic/session/${sessionId}`, (message) => {
+
+      const event = JSON.parse(message.body);
+
+      setEvents((prev) => {
+
+        const existing = prev.find(
+          (e) => e.eventId === event.eventId
+        );
+
+        if (existing) {
+          return prev.map((e) =>
+            e.eventId === event.eventId ? event : e
+          );
+        }
+
+        return [...prev, event].sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() -
+            new Date(b.timestamp).getTime()
+        );
+
+      });
+
+    });
+
+  };
+
+  client.activate();
+
+  return () => {
+    client.deactivate();
+  };
+
+}, [sessionId]);
+  // Auto scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events]);
@@ -57,7 +105,7 @@ export default function SessionConversation() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
 
-      {/* PREMIUM HEADER */}
+      {/* HEADER */}
       <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-6 py-6 shadow-md">
         <div className="flex items-center justify-between">
           <div>
@@ -106,10 +154,9 @@ export default function SessionConversation() {
         )}
       </div>
 
-      {/* CONVERSATION AREA */}
+      {/* CONVERSATION */}
       <div className="flex-1 overflow-y-auto px-10 py-10 relative">
 
-        {/* Timeline vertical line */}
         <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-gray-200" />
 
         <div className="space-y-12 relative z-10">
@@ -117,12 +164,11 @@ export default function SessionConversation() {
           {events.map((event) => (
             <div key={event.eventId} className="relative">
 
-              {/* ATTACKER MESSAGE */}
+              {/* ATTACKER */}
               {event.rawPayload && (
                 <div className="flex justify-start">
                   <div className="relative bg-white border shadow-sm px-5 py-4 rounded-2xl max-w-xl">
 
-                    {/* Severity Accent */}
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-2xl" />
 
                     <div className="text-xs text-red-500 font-semibold mb-2">
@@ -162,7 +208,6 @@ export default function SessionConversation() {
             </div>
           ))}
 
-          {/* End Marker */}
           {(session.state === "CLOSED" ||
             session.state === "TIMEOUT") && (
             <div className="text-center text-gray-400 text-sm mt-10">

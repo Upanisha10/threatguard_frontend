@@ -4,6 +4,7 @@ import { AttackTrendsChart } from "../components/analytics/AttackTrendsChart";
 import { ThreatDistributionChart } from "../components/analytics/ThreatDistributionChart";
 import { TrendingUp, PieChart, Activity, AlertTriangle } from "lucide-react";
 import { apiService } from "../services/api";
+import { AttackMap } from "../components/analytics/AttackMap";
 
 export default function Analytics() {
 
@@ -19,6 +20,7 @@ export default function Analytics() {
 
   const [attackTrend, setAttackTrend] = useState<any[]>([]);
   const [attackTypes, setAttackTypes] = useState<any[]>([]);
+  const [attackMapData, setAttackMapData] = useState<any[]>([]);
 
   const [noData, setNoData] = useState(false);
 
@@ -36,7 +38,8 @@ export default function Analytics() {
         activeSessionsCount,
         totalAttackCount,
         criticalAttackCount,
-        trendData
+        trendData,
+        mapData
       ] = await Promise.all([
         apiService.getCountryDistribution(),
         apiService.getAttackTypes(),
@@ -44,7 +47,8 @@ export default function Analytics() {
         apiService.getActiveSessions(),
         apiService.getTotalAttacks(),
         apiService.getCriticalCount(),
-        apiService.getAttackTrend()
+        apiService.getAttackTrend(),
+        apiService.getAttackMap()
       ]);
 
       // ---------- SORT TREND DATA ----------
@@ -68,6 +72,7 @@ export default function Analytics() {
       }
 
       setAttackTrend(filteredTrend);
+      setAttackMapData(mapData);
 
       // ---------- NO DATA CHECK ----------
       if (filteredTrend.length === 0) {
@@ -234,6 +239,14 @@ export default function Analytics() {
         </Card>
 
       </div>
+
+      <Card className="p-6 border shadow-sm">
+      <h3 className="text-lg font-semibold text-gray-900 mb-6">
+        Global Attack Map
+      </h3>
+
+      <AttackMap data={attackMapData} />
+    </Card>
 
       {/* Insights */}
       <Card className="p-6">

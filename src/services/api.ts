@@ -174,10 +174,18 @@ async getSessions() {
 
   return data.map((s: any) => ({
     id: s.sessionId,
-    attackerIp: s.sourceIp,
-    country: s.sourceCountry || "Unknown",
-    duration: calculateDurationSeconds(s.startTime, s.endTime),
-    status: mapStatus(s.state),
+
+    attackerIp: s.sourceIp ?? "-",
+
+    country: s.sourceCountry ?? "Unknown",
+
+    duration: calculateDurationSeconds(
+      s.startTime,
+      s.endTime ?? new Date().toISOString()
+    ),
+
+    status: mapStatus(s.state ?? "ACTIVE"),
+
     sessionStart: s.startTime,
   }));
 }
@@ -349,6 +357,27 @@ async getAttackTrend() {
     if (!res.ok) throw new Error("Failed to fetch average risk");
     return res.json();
   }
+
+  async getAttackMap() {
+
+  const token = localStorage.getItem("auth_token");
+
+  const response = await fetch(
+    `${this.BASE_URL}/analytics/attack-map`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch attack map");
+  }
+
+  return response.json();
+}
 
 
 
