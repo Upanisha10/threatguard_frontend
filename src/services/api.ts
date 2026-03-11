@@ -207,9 +207,10 @@ async getAlerts() {
   const data = await response.json();
 
   return data.map((a: any) => ({
-    id: a.sessionId,
+    id: a.id ?? a.sessionId,
+    alertTitle: a.alertTitle,
     riskScore: a.riskScore,
-    severity: a.severity.toLowerCase(), // backend sends CRITICAL
+    severity: a.severity.toLowerCase(),
     latestEventTime: a.latestEventTime,
   }));
 }

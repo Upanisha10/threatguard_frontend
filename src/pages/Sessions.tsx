@@ -15,12 +15,18 @@ function calculateDurationSeconds(startTime: string, endTime: string) {
 
 function mapStatus(state: string) {
   switch (state) {
+    case "NEW":
+      return "active";
+
     case "ACTIVE":
       return "active";
-    case "TIMEOUT":
-      return "monitoring";
-    case "CLOSED":
+
+    case "EXPIRED":
+      return "expired";
+
+    case "TERMINATED":
       return "terminated";
+
     default:
       return "active";
   }
@@ -38,120 +44,128 @@ export default function Sessions() {
   const [currentPage, setCurrentPage] = useState(1);
   const sessionsPerPage = 8;
 
-  // Initial REST fetch
-  // Initial REST fetch
-useEffect(() => {
-
-  const fetchSessions = async () => {
+  const handleTerminate = async (id: string) => {
     try {
-
-      const data = await apiService.getSessions();
-
-      console.log("Sessions loaded:", data);
-
-      setSessions(data);
-
-    } catch (error) {
-
-      console.error("Failed to fetch sessions:", error);
-
-    } finally {
-
-      setLoading(false);
-
+      await apiService.terminateSession(id);
+    } catch (err) {
+      console.error("Terminate failed", err);
     }
   };
 
-  fetchSessions();
+  // Initial REST fetch
+  useEffect(() => {
 
-}, []);
+    const fetchSessions = async () => {
+      try {
 
-// WebSocket connection
-useEffect(() => {
+        const data = await apiService.getSessions();
 
-  const client = new Client({
-    brokerURL: "ws://localhost:8080/ws",
-    reconnectDelay: 5000,
-  });
+        console.log("Sessions loaded:", data);
 
-  client.onConnect = () => {
+        setSessions(data);
 
-    client.subscribe("/topic/sessions", (message) => {
+      } catch (error) {
 
-      const raw = JSON.parse(message.body);
+        console.error("Failed to fetch sessions:", error);
 
-      const newSession: Session = {
-        id: String(raw.id ?? raw.sessionId),   // ← THIS FIXES EVERYTHING
-        attackerIp: raw.sourceIp ?? "-",
-        country: raw.sourceCountry ?? "Unknown",
-        duration: calculateDurationSeconds(
-          raw.startTime,
-          raw.endTime ?? new Date().toISOString()
-        ),
-        status: mapStatus(raw.state),
-        sessionStart: raw.startTime
-      };
+      } finally {
 
-      setSessions((prev) => {
+        setLoading(false);
 
-        const existing = prev.find(
-          (s) => s.id === newSession.id
-        );
+      }
+    };
 
-        if (existing) {
-          return prev.map((s) =>
-            s.id === newSession.id ? newSession : s
-          );
-        }
+    fetchSessions();
 
-        return [newSession, ...prev];
+  }, []);
 
-      });
+  // WebSocket connection
+  useEffect(() => {
 
-      // highlight
-      setHighlighted((prev) => {
-        const copy = new Set(prev);
-        copy.add(newSession.id);
-        return copy;
-      });
-
-      setTimeout(() => {
-        setHighlighted((prev) => {
-          const copy = new Set(prev);
-          copy.delete(newSession.id);
-          return copy;
-        });
-      }, 3000);
-
+    const client = new Client({
+      brokerURL: "ws://localhost:8080/ws",
+      reconnectDelay: 5000,
     });
 
-  };
+    client.onConnect = () => {
 
-  client.activate();
+      client.subscribe("/topic/sessions", (message) => {
 
-  return () => {
-    client.deactivate();
-  };
+        const raw = JSON.parse(message.body);
 
-}, []);
+        const newSession: Session = {
+          id: String(raw.id ?? raw.sessionId),
+          attackerIp: raw.sourceIp ?? "-",
+          country: raw.sourceCountry ?? "Unknown",
+          duration: calculateDurationSeconds(
+            raw.startTime,
+            raw.endTime ?? new Date().toISOString()
+          ),
+          status: mapStatus(raw.state),
+          sessionStart: raw.startTime
+        };
+
+        setSessions((prev) => {
+
+          const existing = prev.find(
+            (s) => s.id === newSession.id
+          );
+
+          if (existing) {
+            return prev.map((s) =>
+              s.id === newSession.id ? newSession : s
+            );
+          }
+
+          return [newSession, ...prev];
+
+        });
+
+        // highlight
+        setHighlighted((prev) => {
+          const copy = new Set(prev);
+          copy.add(newSession.id);
+          return copy;
+        });
+
+        setTimeout(() => {
+          setHighlighted((prev) => {
+            const copy = new Set(prev);
+            copy.delete(newSession.id);
+            return copy;
+          });
+        }, 3000);
+
+      });
+
+    };
+
+    client.activate();
+
+    return () => {
+      client.deactivate();
+    };
+
+  }, []);
+
   // Filtering
   const filteredSessions = useMemo(() => {
-  return sessions.filter((session) => {
+    return sessions.filter((session) => {
 
-    const ip = session.attackerIp ?? "";
-    const country = session.country ?? "";
+      const ip = session.attackerIp ?? "";
+      const country = session.country ?? "";
 
-    const matchesSearch =
-      ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      country.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch =
+        ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        country.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "ALL" || session.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "ALL" || session.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus;
 
-  });
-}, [sessions, searchTerm, statusFilter]);
+    });
+  }, [sessions, searchTerm, statusFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredSessions.length / sessionsPerPage);
@@ -171,9 +185,9 @@ useEffect(() => {
   }
 
   // Stats
-  const activeCount = sessions.filter((s) => s?.status === "active").length;
-  const closedCount = sessions.filter((s) => s.status === "monitoring").length;
-  const timeoutCount = sessions.filter((s) => s.status === "terminated").length;
+  const activeCount = sessions.filter((s) => s.status === "active").length;
+  const expiredCount = sessions.filter((s) => s.status === "expired").length;
+  const terminatedCount = sessions.filter((s) => s.status === "terminated").length;
 
   return (
     <div className="space-y-6">
@@ -205,16 +219,16 @@ useEffect(() => {
         </Card>
 
         <Card className="p-4 border shadow-sm">
-          <p className="text-sm text-gray-500">Closed</p>
+          <p className="text-sm text-gray-500">Expired</p>
           <p className="text-xl font-semibold text-blue-600">
-            {closedCount}
+            {expiredCount}
           </p>
         </Card>
 
         <Card className="p-4 border shadow-sm">
-          <p className="text-sm text-gray-500">Timeout</p>
+          <p className="text-sm text-gray-500">Terminated</p>
           <p className="text-xl font-semibold text-red-600">
-            {timeoutCount}
+            {terminatedCount}
           </p>
         </Card>
 
@@ -258,9 +272,9 @@ useEffect(() => {
             >
 
               <option value="ALL">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="CLOSED">Closed</option>
-              <option value="TIMEOUT">Timeout</option>
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="terminated">Terminated</option>
 
             </select>
 
@@ -270,9 +284,9 @@ useEffect(() => {
 
         {/* Table */}
         <SessionsTable
-          sessions={paginatedSessions}
-          // highlighted={highlighted}
-        />
+        sessions={paginatedSessions}
+        onTerminate={handleTerminate}
+      />
 
         {/* Pagination */}
         {totalPages > 1 && (

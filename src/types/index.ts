@@ -3,13 +3,14 @@ export interface Session {
   attackerIp: string;
   country: string;
   duration: number;
-  status: "active" | "monitoring" | "terminated";
+  status: "new" | "active" | "terminated" | "expired";
   sessionStart: string;
 }
 
 
 export interface Alert {
-  id: string;              
+  id: string; 
+  alertTitle: string;             
   riskScore: number;
   severity: 'critical' | 'high' | 'medium' | 'low';
   latestEventTime: string;
