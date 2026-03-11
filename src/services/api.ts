@@ -157,6 +157,7 @@ async forgotPassword(email: string) {
 
 
 async getSessions() {
+
   const token = localStorage.getItem("auth_token");
 
   const response = await fetch(`${this.BASE_URL}/api/sessions`, {
@@ -172,22 +173,9 @@ async getSessions() {
 
   const data = await response.json();
 
-  return data.map((s: any) => ({
-    id: s.sessionId,
+  console.log("SESSIONS RAW:", data);
 
-    attackerIp: s.sourceIp ?? "-",
-
-    country: s.sourceCountry ?? "Unknown",
-
-    duration: calculateDurationSeconds(
-      s.startTime,
-      s.endTime ?? new Date().toISOString()
-    ),
-
-    status: mapStatus(s.state ?? "ACTIVE"),
-
-    sessionStart: s.startTime,
-  }));
+  return data;
 }
 
 async getAlerts() {
@@ -378,6 +366,49 @@ async getAttackTrend() {
   }
 
   return response.json();
+}
+
+async terminateSession(sessionId: string) {
+
+  const token = localStorage.getItem("auth_token");
+
+  const response = await fetch(
+    `${this.BASE_URL}/api/sessions/${sessionId}/terminate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to terminate session");
+  }
+
+  return await response.json();
+}
+
+async getIncidentReport(sessionId: string) {
+
+  const token = localStorage.getItem("auth_token");
+
+  const response = await fetch(
+    `${this.BASE_URL}/api/reports/session/${sessionId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch report");
+  }
+
+  return await response.json();
 }
 
 

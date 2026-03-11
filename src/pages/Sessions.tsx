@@ -9,15 +9,14 @@ import { Client } from "@stomp/stompjs";
 function calculateDurationSeconds(startTime: string, endTime: string) {
   const start = new Date(startTime).getTime();
   const end = new Date(endTime).getTime();
-
   return Math.floor((end - start) / 1000);
 }
 
 function mapStatus(state: string) {
-  switch (state) {
-    case "NEW":
-      return "active";
+  if (!state) return "active";
 
+  switch (state.toUpperCase()) {
+    case "NEW":
     case "ACTIVE":
       return "active";
 
@@ -38,9 +37,7 @@ export default function Sessions() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const sessionsPerPage = 8;
 
@@ -52,17 +49,39 @@ export default function Sessions() {
     }
   };
 
-  // Initial REST fetch
+  // INITIAL REST FETCH
   useEffect(() => {
 
     const fetchSessions = async () => {
+
       try {
 
         const data = await apiService.getSessions();
 
-        console.log("Sessions loaded:", data);
+        const normalized = data.map((s: any) => {
 
-        setSessions(data);
+          const endTime =
+            s.state === "EXPIRED" || s.state === "TERMINATED"
+              ? s.endTime
+              : new Date().toISOString();
+
+          return {
+            id: String(s.sessionId ?? s.id),
+            attackerIp: s.sourceIp ?? "-",
+            country: s.sourceCountry ?? "Unknown",
+
+            duration: calculateDurationSeconds(
+              s.startTime,
+              endTime
+            ),
+
+            status: mapStatus(s.state),
+
+            sessionStart: s.startTime
+          };
+        });
+
+        setSessions(normalized);
 
       } catch (error) {
 
@@ -73,13 +92,14 @@ export default function Sessions() {
         setLoading(false);
 
       }
+
     };
 
     fetchSessions();
 
   }, []);
 
-  // WebSocket connection
+  // WEBSOCKET LIVE UPDATES
   useEffect(() => {
 
     const client = new Client({
@@ -93,15 +113,26 @@ export default function Sessions() {
 
         const raw = JSON.parse(message.body);
 
+        const endTime =
+          raw.state === "EXPIRED" || raw.state === "TERMINATED"
+            ? raw.endTime
+            : new Date().toISOString();
+
         const newSession: Session = {
+
           id: String(raw.id ?? raw.sessionId),
+
           attackerIp: raw.sourceIp ?? "-",
+
           country: raw.sourceCountry ?? "Unknown",
+
           duration: calculateDurationSeconds(
             raw.startTime,
-            raw.endTime ?? new Date().toISOString()
+            endTime
           ),
+
           status: mapStatus(raw.state),
+
           sessionStart: raw.startTime
         };
 
@@ -121,21 +152,6 @@ export default function Sessions() {
 
         });
 
-        // highlight
-        setHighlighted((prev) => {
-          const copy = new Set(prev);
-          copy.add(newSession.id);
-          return copy;
-        });
-
-        setTimeout(() => {
-          setHighlighted((prev) => {
-            const copy = new Set(prev);
-            copy.delete(newSession.id);
-            return copy;
-          });
-        }, 3000);
-
       });
 
     };
@@ -148,8 +164,9 @@ export default function Sessions() {
 
   }, []);
 
-  // Filtering
+  // FILTERING
   const filteredSessions = useMemo(() => {
+
     return sessions.filter((session) => {
 
       const ip = session.attackerIp ?? "";
@@ -165,10 +182,12 @@ export default function Sessions() {
       return matchesSearch && matchesStatus;
 
     });
+
   }, [sessions, searchTerm, statusFilter]);
 
-  // Pagination logic
+  // PAGINATION
   const totalPages = Math.ceil(filteredSessions.length / sessionsPerPage);
+
   const startIndex = (currentPage - 1) * sessionsPerPage;
 
   const paginatedSessions = filteredSessions.slice(
@@ -184,62 +203,83 @@ export default function Sessions() {
     );
   }
 
-  // Stats
+  // STATS
   const activeCount = sessions.filter((s) => s.status === "active").length;
+
   const expiredCount = sessions.filter((s) => s.status === "expired").length;
+
   const terminatedCount = sessions.filter((s) => s.status === "terminated").length;
 
   return (
+
     <div className="space-y-6">
 
-      {/* Header */}
+      {/* HEADER */}
+
       <div className="flex justify-between items-end">
+
         <div>
+
           <h2 className="text-2xl font-bold text-gray-900">
             Attacker Sessions
           </h2>
+
           <p className="text-gray-500 mt-1">
             Monitor and analyze attacker activity
           </p>
+
         </div>
 
         <div className="text-sm text-gray-500">
           {filteredSessions.length} total sessions
         </div>
+
       </div>
 
-      {/* Summary Cards */}
+      {/* SUMMARY CARDS */}
+
       <div className="grid grid-cols-3 gap-4">
 
         <Card className="p-4 border shadow-sm">
+
           <p className="text-sm text-gray-500">Active</p>
+
           <p className="text-xl font-semibold text-green-600">
             {activeCount}
           </p>
+
         </Card>
 
         <Card className="p-4 border shadow-sm">
+
           <p className="text-sm text-gray-500">Expired</p>
-          <p className="text-xl font-semibold text-blue-600">
+
+          <p className="text-xl font-semibold text-yellow-600">
             {expiredCount}
           </p>
+
         </Card>
 
         <Card className="p-4 border shadow-sm">
+
           <p className="text-sm text-gray-500">Terminated</p>
+
           <p className="text-xl font-semibold text-red-600">
             {terminatedCount}
           </p>
+
         </Card>
 
       </div>
 
-      {/* Search + Filter */}
+      {/* SEARCH + FILTER */}
+
       <Card className="p-6 border shadow-sm">
 
         <div className="flex items-center justify-between mb-6">
 
-          {/* Search */}
+          {/* SEARCH */}
+
           <div className="flex-1 max-w-md relative">
 
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -252,12 +292,13 @@ export default function Sessions() {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
             />
 
           </div>
 
-          {/* Status Filter */}
+          {/* FILTER */}
+
           <div className="ml-4 flex items-center">
 
             <Filter className="w-4 h-4 text-gray-400 mr-2" />
@@ -282,13 +323,15 @@ export default function Sessions() {
 
         </div>
 
-        {/* Table */}
-        <SessionsTable
-        sessions={paginatedSessions}
-        onTerminate={handleTerminate}
-      />
+        {/* TABLE */}
 
-        {/* Pagination */}
+        <SessionsTable
+          sessions={paginatedSessions}
+          onTerminate={handleTerminate}
+        />
+
+        {/* PAGINATION */}
+
         {totalPages > 1 && (
 
           <div className="flex justify-between items-center mt-6 pt-4 border-t">
@@ -304,7 +347,7 @@ export default function Sessions() {
                 onClick={() =>
                   setCurrentPage((prev) => Math.max(prev - 1, 1))
                 }
-                className="p-2 border rounded-md bg-white hover:bg-gray-100 disabled:opacity-50"
+                className="p-2 border rounded-md bg-white hover:bg-gray-100"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -316,7 +359,7 @@ export default function Sessions() {
                     Math.min(prev + 1, totalPages)
                   )
                 }
-                className="p-2 border rounded-md bg-white hover:bg-gray-100 disabled:opacity-50"
+                className="p-2 border rounded-md bg-white hover:bg-gray-100"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -330,5 +373,6 @@ export default function Sessions() {
       </Card>
 
     </div>
+
   );
 }
