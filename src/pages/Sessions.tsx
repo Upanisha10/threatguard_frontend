@@ -103,7 +103,7 @@ export default function Sessions() {
   useEffect(() => {
 
     const client = new Client({
-      brokerURL: "ws://localhost:8080/ws",
+      brokerURL: "wss://web-production-8e3fb.up.railway.app/ws",
       reconnectDelay: 5000,
     });
 
