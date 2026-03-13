@@ -25,7 +25,7 @@ function mapStatus(state: string) {
 
 
 class ApiService {
-  private BASE_URL = "http://localhost:8080";
+  private BASE_URL = "https://web-production-8e3fb.up.railway.app";
 
   async getKPIData(): Promise<KPIData> {
     await this.delay(300);
@@ -411,8 +411,23 @@ async getIncidentReport(sessionId: string) {
   return await response.json();
 }
 
+async getDashboardOverview() {
 
+  const token = localStorage.getItem("auth_token");
 
+  const response = await fetch(`${this.BASE_URL}/api/dashboard/overview`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch dashboard");
+  }
+
+  return await response.json();
+}
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));

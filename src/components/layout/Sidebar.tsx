@@ -31,7 +31,6 @@ export function Sidebar() {
     { name: 'Analytics', to: '/analytics', icon: BarChart3 },
 
     { name: 'Users', to: '/users', icon: Users },
-    { name: 'System Settings', to: '/admin-settings', icon: Sliders },
     { name: 'Audit Logs', to: '/audit', icon: Database },
   ];
 
